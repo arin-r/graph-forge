@@ -37,7 +37,6 @@ export function handleAddEdge(
     target,
     label: undefined,
     type: 'default',
-    animated: true,
     style: { strokeWidth: 2 },
     markerEnd: directed ? { type: 'arrowclosed', width: 20, height: 20 } : undefined,
   } as Edge;

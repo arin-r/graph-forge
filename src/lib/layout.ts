@@ -1,8 +1,10 @@
 import { Graph } from '../types/graph';
 import { Node, Edge } from 'reactflow';
 
-export function applyCircularLayout(graph: Graph, centerX = 400, centerY = 300, radius = 200) {
+export function applyCircularLayout(graph: Graph, centerX = 400, centerY = 300) {
   const totalNodes = graph.nodes.length;
+  // Calculate a dynamic radius ensuring at least 60px of arc per node
+  const radius = Math.max(200, (totalNodes * 60) / (2 * Math.PI));
   
   const reactFlowNodes: Node[] = graph.nodes.map((node: any, index: number) => {
     const angle = (2 * Math.PI * index) / totalNodes;
@@ -33,7 +35,6 @@ export function applyCircularLayout(graph: Graph, centerX = 400, centerY = 300, 
     target: edge.target,
     label: edge.weight !== undefined ? String(edge.weight) : undefined,
     type: 'default',
-    animated: true,
     style: { strokeWidth: 2 },
     markerEnd: graph.directed ? { type: 'arrowclosed' as any, width: 20, height: 20 } : undefined
   }));
