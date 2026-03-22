@@ -1,65 +1,134 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useCallback, useEffect } from 'react';
+import { InputPanel } from '../components/InputPanel';
+import { GraphCanvas } from '../components/GraphCanvas';
+import { parseAdjacencyList, parseAdjacencyMatrix } from '../lib/parsers';
+import { applyCircularLayout } from '../lib/layout';
+import { Node, Edge, ReactFlowProvider, useNodesState, useEdgesState } from 'reactflow';
+import { Mode } from '../types/graph';
+import { computeNextNodeId, handleAddEdge } from '../lib/graphUtils';
 
 export default function Home() {
+  const [inputText, setInputText] = useState('1: 2 3\n2: 3\n3: 1');
+  const [format, setFormat] = useState<'list' | 'matrix'>('list');
+  const [directed, setDirected] = useState(true);
+  
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
+  
+  const [mode, setMode] = useState<Mode>('view');
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [nextNodeId, setNextNodeId] = useState<number>(1);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleRender = useCallback(() => {
+    try {
+      setError(null);
+      let graph;
+      if (format === 'list') {
+        graph = parseAdjacencyList(inputText, directed);
+      } else {
+        graph = parseAdjacencyMatrix(inputText, directed);
+      }
+      
+      const { nodes: flowNodes, edges: flowEdges } = applyCircularLayout(graph);
+      setNodes(flowNodes);
+      setEdges(flowEdges);
+      setNextNodeId(computeNextNodeId(flowNodes));
+      setMode('view');
+      setSelectedNodeId(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to parse graph');
+    }
+  }, [inputText, format, directed, setNodes, setEdges]);
+
+  // Initial render effect
+  useEffect(() => {
+    handleRender();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleModeChange = useCallback((newMode: Mode) => {
+    setMode(newMode);
+    setSelectedNodeId(null);
+  }, []);
+
+  const onAddNode = useCallback((position: { x: number; y: number }) => {
+    const id = nextNodeId.toString();
+    const newNode: Node = {
+      id,
+      position,
+      data: { label: id },
+      type: 'default',
+      sourcePosition: 'bottom' as any,
+      targetPosition: 'top' as any,
+      style: { 
+        width: 48, 
+        height: 48, 
+        borderRadius: '50%', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+      },
+    };
+    setNodes((nds) => nds.concat(newNode));
+    setNextNodeId((prev) => prev + 1);
+  }, [nextNodeId, setNodes]);
+
+  const onNodeSelect = useCallback((nodeId: string | null) => {
+    if (nodeId && mode === 'addEdge') {
+      if (!selectedNodeId) {
+        setSelectedNodeId(nodeId);
+      } else {
+        const newEdge = handleAddEdge(selectedNodeId, nodeId, edges, directed);
+        if (newEdge) {
+          setEdges((eds) => eds.concat(newEdge));
+        }
+        setSelectedNodeId(null);
+      }
+    } else {
+      setSelectedNodeId(null);
+    }
+  }, [mode, selectedNodeId, edges, directed, setEdges]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="w-screen h-screen flex overflow-hidden bg-[#0a0f1c]">
+      <div className="w-[350px] relative z-10 shrink-0">
+        <InputPanel
+          inputText={inputText}
+          onInputChange={setInputText}
+          format={format}
+          onFormatChange={(fmt) => {
+            setFormat(fmt);
+            if (fmt === 'list') {
+              setInputText('1: 2 3\n2: 3\n3: 1');
+            } else {
+              setInputText('0 1 1\n0 0 1\n1 0 0');
+            }
+          }}
+          directed={directed}
+          onDirectedChange={setDirected}
+          mode={mode}
+          onModeChange={handleModeChange}
+          onRender={handleRender}
+          error={error}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+      <div className="flex-1 relative">
+        <ReactFlowProvider>
+          <GraphCanvas 
+            nodes={nodes} 
+            edges={edges} 
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            mode={mode}
+            selectedNodeId={selectedNodeId}
+            onAddNode={onAddNode}
+            onNodeSelect={onNodeSelect}
+          />
+        </ReactFlowProvider>
+      </div>
+    </main>
   );
 }
