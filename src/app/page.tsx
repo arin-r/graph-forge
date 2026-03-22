@@ -10,6 +10,8 @@ import { Mode } from '../types/graph';
 import { computeNextNodeId, handleAddEdge } from '../lib/graphUtils';
 
 export default function Home() {
+  const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [inputText, setInputText] = useState('1: 2 3\n2: 3\n3: 1');
   const [format, setFormat] = useState<'list' | 'matrix'>('list');
   const [directed, setDirected] = useState(true);
@@ -46,6 +48,7 @@ export default function Home() {
   // Initial render effect
   useEffect(() => {
     handleRender();
+    setMounted(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -92,9 +95,13 @@ export default function Home() {
     }
   }, [mode, selectedNodeId, edges, directed, setEdges]);
 
+  if (!mounted) {
+    return <div className="w-screen h-screen bg-slate-50 dark:bg-[#0a0f1c]" />;
+  }
+
   return (
-    <main className="w-screen h-screen flex overflow-hidden bg-[#0a0f1c]">
-      <div className="w-[350px] relative z-10 shrink-0">
+    <main className={`w-screen h-screen flex overflow-hidden ${theme === 'dark' ? 'dark ' : ''}bg-slate-50 dark:bg-[#0a0f1c]`}>
+      <div className="w-[350px] relative z-10 shrink-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl overflow-y-auto">
         <InputPanel
           inputText={inputText}
           onInputChange={setInputText}
@@ -113,6 +120,8 @@ export default function Home() {
           onModeChange={handleModeChange}
           onRender={handleRender}
           error={error}
+          theme={theme}
+          onThemeChange={setTheme}
         />
       </div>
       <div className="flex-1 relative">
@@ -126,6 +135,7 @@ export default function Home() {
             selectedNodeId={selectedNodeId}
             onAddNode={onAddNode}
             onNodeSelect={onNodeSelect}
+            theme={theme}
           />
         </ReactFlowProvider>
       </div>

@@ -12,6 +12,7 @@ interface GraphCanvasProps {
   selectedNodeId: string | null;
   onAddNode: (position: { x: number; y: number }) => void;
   onNodeSelect: (nodeId: string | null) => void;
+  theme: 'dark' | 'light';
 }
 
 const nodeTypes = {};
@@ -25,7 +26,8 @@ export function GraphCanvas({
   mode, 
   selectedNodeId, 
   onAddNode,
-  onNodeSelect
+  onNodeSelect,
+  theme
 }: GraphCanvasProps) {
   const { project } = useReactFlow();
 
@@ -50,7 +52,11 @@ export function GraphCanvas({
 
   const styledNodes = nodes.map((n) => {
     const isSelected = n.id === selectedNodeId;
-    if (!isSelected) return n;
+    if (!isSelected) {
+      // For general nodes, the user might inject colors if desired. Wait, node natively handles its background
+      // React Flow default nodes have white background by default, we'll let it handle its own CSS or they can edit global CSS
+      return n;
+    }
     
     return {
       ...n,
@@ -63,7 +69,7 @@ export function GraphCanvas({
   });
 
   return (
-    <div className="w-full h-full bg-[#0a0f1c] relative">
+    <div className="w-full h-full bg-slate-50 dark:bg-[#0a0f1c] relative">
       <ReactFlow 
         nodes={styledNodes} 
         edges={edges}
@@ -79,15 +85,15 @@ export function GraphCanvas({
         maxZoom={4}
         className="touch-none"
       >
-        <Background color="#1e293b" gap={24} size={1} />
+        <Background color={theme === 'dark' ? '#1e293b' : '#cbd5e1'} gap={24} size={1} />
         <Controls 
-          className="bg-slate-800 border-none shadow-xl fill-slate-300"
+          className="bg-white border-slate-200 fill-slate-700 dark:bg-slate-800 dark:border-none dark:shadow-xl dark:fill-slate-300"
           showInteractive={false} 
         />
       </ReactFlow>
       
       {mode === 'addEdge' && selectedNodeId && (
-        <div className="absolute top-4 left-4 z-10 bg-emerald-600/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg shadow-lg font-semibold border border-emerald-500/50 pointer-events-none">
+        <div className="absolute top-4 left-4 z-10 bg-emerald-500 dark:bg-emerald-600/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg shadow-lg font-semibold border border-emerald-400 dark:border-emerald-500/50 pointer-events-none">
           Selected Node: {selectedNodeId}
         </div>
       )}
