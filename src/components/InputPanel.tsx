@@ -1,4 +1,5 @@
-import { Play } from 'lucide-react';
+import { Play, Upload } from 'lucide-react';
+import { useRef } from 'react';
 import { ModeToggle } from './ModeToggle';
 import { Mode } from '../types/graph';
 
@@ -27,6 +28,21 @@ export function InputPanel({
   onRender,
   error
 }: InputPanelProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (text) onInputChange(text);
+      if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="w-full h-full flex flex-col p-6 bg-slate-900 border-r border-slate-700 shadow-xl overflow-y-auto">
       <h1 className="text-2xl font-bold mb-6 text-emerald-400">Graph Visualizer</h1>
@@ -71,7 +87,23 @@ export function InputPanel({
         <ModeToggle mode={mode} onModeChange={onModeChange} />
 
         <div className="flex flex-col gap-2 flex-1 min-h-[250px]">
-          <label className="text-sm font-semibold text-slate-300">Graph Input</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-semibold text-slate-300">Graph Input</label>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors bg-slate-800/50 hover:bg-slate-800 px-2 py-1 rounded"
+              title="Import from .txt file"
+            >
+              <Upload size={14} /> Import File
+            </button>
+            <input 
+              type="file" 
+              accept=".txt" 
+              className="hidden" 
+              ref={fileInputRef} 
+              onChange={handleFileUpload} 
+            />
+          </div>
           <textarea
             value={inputText}
             onChange={(e) => onInputChange(e.target.value)}
