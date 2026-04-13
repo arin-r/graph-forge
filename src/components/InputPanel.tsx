@@ -2,6 +2,7 @@ import { Play, Upload, Sun, Moon } from 'lucide-react';
 import { useRef } from 'react';
 import { ModeToggle } from './ModeToggle';
 import { Mode } from '../types/graph';
+import { DEFAULT_LIST_INPUT, DEFAULT_MATRIX_INPUT } from '../lib/constants';
 
 interface InputPanelProps {
   inputText: string;
@@ -121,7 +122,7 @@ export function InputPanel({
             value={inputText}
             onChange={(e) => onInputChange(e.target.value)}
             className="flex-1 w-full p-4 rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-colors resize-none"
-            placeholder={format === 'list' ? '1: 2 3\n2: 3\n3: 1' : '0 1 1\n0 0 1\n1 0 0'}
+            placeholder={format === 'list' ? DEFAULT_LIST_INPUT : DEFAULT_MATRIX_INPUT}
           />
         </div>
         

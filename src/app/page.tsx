@@ -8,11 +8,12 @@ import { applyCircularLayout } from '../lib/layout';
 import { Node, Edge, ReactFlowProvider, useNodesState, useEdgesState } from 'reactflow';
 import { Mode } from '../types/graph';
 import { computeNextNodeId, handleAddEdge, generateAdjacencyList, generateAdjacencyMatrix } from '../lib/graphUtils';
+import { DEFAULT_LIST_INPUT, DEFAULT_MATRIX_INPUT } from '../lib/constants';
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [inputText, setInputText] = useState('1: 2 3\n2: 3\n3: 1');
+  const [inputText, setInputText] = useState(DEFAULT_LIST_INPUT);
   const [format, setFormat] = useState<'list' | 'matrix'>('list');
   const [directed, setDirected] = useState(true);
   
@@ -51,7 +52,7 @@ export default function Home() {
     setFormat(initFormat);
 
     const savedText = localStorage.getItem(`graphInput_${initFormat}`);
-    const initText = savedText || (initFormat === 'list' ? '1: 2 3\n2: 3\n3: 1' : '0 1 1\n0 0 1\n1 0 0');
+    const initText = savedText || (initFormat === 'list' ? DEFAULT_LIST_INPUT : DEFAULT_MATRIX_INPUT);
     setInputText(initText);
 
     try {
@@ -86,7 +87,7 @@ export default function Home() {
       if (savedText) {
         setInputText(savedText);
       } else {
-        setInputText(newFormat === 'list' ? '1: 2 3\n2: 3\n3: 1' : '0 1 1\n0 0 1\n1 0 0');
+        setInputText(newFormat === 'list' ? DEFAULT_LIST_INPUT : DEFAULT_MATRIX_INPUT);
       }
     }
   }, [mounted]);
