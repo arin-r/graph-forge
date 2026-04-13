@@ -7,16 +7,22 @@ export function parseAdjacencyList(input: string, directed: boolean): Graph {
 
   const lines = input.split('\n');
   
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const lineNumber = i + 1;
+    const line = lines[i];
     const trimmed = line.trim();
     if (!trimmed) continue;
     
-    // Example: "1: 2 3" or "A:B C"
+    if (!trimmed.includes(':')) {
+      throw new Error(`Parse error on line ${lineNumber}: Missing colon ':'. Expected format is 'Node: Neighbor1 Neighbor2 ...'`);
+    }
+
     const parts = trimmed.split(':');
-    if (parts.length < 1) continue;
-    
     const source = parts[0].trim();
-    if (!source) continue;
+    
+    if (!source) {
+      throw new Error(`Parse error on line ${lineNumber}: Missing source node ID before colon. Expected format is 'Node: Neighbor1 Neighbor2 ...'`);
+    }
     
     nodesMap.add(source);
     
@@ -56,8 +62,19 @@ export function parseAdjacencyList(input: string, directed: boolean): Graph {
 }
 
 export function parseAdjacencyMatrix(input: string, directed: boolean): Graph {
-  const lines = input.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-  const n = lines.length;
+  const rawLines = input.split('\n');
+  const validLines: { text: string; lineNumber: number }[] = [];
+  for (let i = 0; i < rawLines.length; i++) {
+    const trimmed = rawLines[i].trim();
+    if (trimmed) {
+      validLines.push({ text: trimmed, lineNumber: i + 1 });
+    }
+  }
+
+  const n = validLines.length;
+  if (n === 0) {
+    return { nodes: [], edges: [], directed };
+  }
   
   const nodesMap = new Set<string>();
   for (let i = 0; i < n; i++) {
@@ -68,10 +85,25 @@ export function parseAdjacencyMatrix(input: string, directed: boolean): Graph {
   const edgeSet = new Set<string>();
 
   for (let i = 0; i < n; i++) {
-    const row = lines[i].split(/\s+/);
-    for (let j = 0; j < Math.min(row.length, n); j++) {
-      const weight = parseFloat(row[j]);
-      if (!isNaN(weight) && weight !== 0) {
+    const lineObj = validLines[i];
+    const row = lineObj.text.split(/\s+/);
+    
+    if (row.length !== n) {
+      throw new Error(`Parse error on line ${lineObj.lineNumber}: Matrix must be square. Expected ${n} columns for ${n} rows, but found ${row.length} columns. Expected format: N rows of N space-separated numbers.`);
+    }
+
+    for (let j = 0; j < n; j++) {
+      const valStr = row[j];
+      const weight = parseFloat(valStr);
+      if (isNaN(weight)) {
+        throw new Error(`Parse error on line ${lineObj.lineNumber}: Invalid value '${valStr}' at column ${j + 1}. Matrix elements must be numbers.`);
+      }
+
+      if (weight !== 0 && weight !== 1) {
+        throw new Error(`Parse error on line ${lineObj.lineNumber}: Invalid value '${valStr}' at column ${j + 1}. Expected a binary value (0 or 1) representing edge existence in an unweighted adjacency matrix.`);
+      }
+
+      if (weight !== 0) {
         const source = i.toString();
         const target = j.toString();
         
