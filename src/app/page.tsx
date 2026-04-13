@@ -45,12 +45,51 @@ export default function Home() {
     }
   }, [inputText, format, directed, setNodes, setEdges]);
 
-  // Initial render effect
+  // Initial load effect
   useEffect(() => {
-    handleRender();
+    const initFormat = (localStorage.getItem('graphFormat') as 'list' | 'matrix') || 'list';
+    setFormat(initFormat);
+
+    const savedText = localStorage.getItem(`graphInput_${initFormat}`);
+    const initText = savedText || (initFormat === 'list' ? '1: 2 3\n2: 3\n3: 1' : '0 1 1\n0 0 1\n1 0 0');
+    setInputText(initText);
+
+    try {
+      const graph = initFormat === 'list' 
+        ? parseAdjacencyList(initText, true)
+        : parseAdjacencyMatrix(initText, true);
+      
+      const { nodes: flowNodes, edges: flowEdges } = applyCircularLayout(graph);
+      setNodes(flowNodes);
+      setEdges(flowEdges);
+      setNextNodeId(computeNextNodeId(flowNodes));
+    } catch {
+      // ignore
+    }
+    
     setMounted(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Save to localStorage when text changes
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem(`graphInput_${format}`, inputText);
+    }
+  }, [inputText, format, mounted]);
+
+  const handleFormatChange = useCallback((newFormat: 'list' | 'matrix') => {
+    setFormat(newFormat);
+    if (mounted) {
+      localStorage.setItem('graphFormat', newFormat);
+      const savedText = localStorage.getItem(`graphInput_${newFormat}`);
+      if (savedText) {
+        setInputText(savedText);
+      } else {
+        setInputText(newFormat === 'list' ? '1: 2 3\n2: 3\n3: 1' : '0 1 1\n0 0 1\n1 0 0');
+      }
+    }
+  }, [mounted]);
 
   const handleModeChange = useCallback((newMode: Mode) => {
     setMode(newMode);
@@ -96,6 +135,7 @@ export default function Home() {
   }, [mode, selectedNodeId, edges, directed, setEdges]);
 
   // Sync graph state to input text box when topology or layout changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!mounted) return;
     
@@ -107,7 +147,7 @@ export default function Home() {
     }
     
     setInputText(prev => prev === newText ? prev : newText);
-  }, [nodes, edges, format, directed, mounted]);
+  }, [nodes, edges, directed, mounted]); // Intentionally omitting 'format' to prevent overwriting local history on mode switch
 
   if (!mounted) {
     return <div className="w-screen h-screen bg-slate-50 dark:bg-[#0a0f1c]" />;
@@ -120,7 +160,7 @@ export default function Home() {
           inputText={inputText}
           onInputChange={setInputText}
           format={format}
-          onFormatChange={setFormat}
+          onFormatChange={handleFormatChange}
           directed={directed}
           onDirectedChange={setDirected}
           mode={mode}
