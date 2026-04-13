@@ -1,7 +1,7 @@
 import { ReactFlow, Controls, Background, Node, Edge, useReactFlow } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Mode } from '../types/graph';
-import { useCallback } from 'react';
+import { Mode, AlgorithmStep } from '../types/graph';
+import { useCallback, useMemo } from 'react';
 
 interface GraphCanvasProps {
   nodes: Node[];
@@ -13,6 +13,7 @@ interface GraphCanvasProps {
   onAddNode: (position: { x: number; y: number }) => void;
   onNodeSelect: (nodeId: string | null) => void;
   theme: 'dark' | 'light';
+  algorithmStep: AlgorithmStep | null;
 }
 
 const nodeTypes = {};
@@ -27,7 +28,8 @@ export function GraphCanvas({
   selectedNodeId, 
   onAddNode,
   onNodeSelect,
-  theme
+  theme,
+  algorithmStep,
 }: GraphCanvasProps) {
   const { project } = useReactFlow();
 
@@ -50,34 +52,150 @@ export function GraphCanvas({
     }
   }, [mode, onNodeSelect]);
 
-  const styledNodes = nodes.map((n) => {
-    const isSelected = n.id === selectedNodeId;
-    if (!isSelected) {
-      // For general nodes, the user might inject colors if desired. Wait, node natively handles its background
-      // React Flow default nodes have white background by default, we'll let it handle its own CSS or they can edit global CSS
-      return n;
-    }
-    
-    return {
-      ...n,
-      style: {
-        ...n.style,
-        border: '2px solid #10b981',
-        boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)',
+  const styledNodes = useMemo(() => {
+    return nodes.map((n) => {
+      // Algorithm visual states take priority
+      if (algorithmStep) {
+        const isCurrent = n.id === algorithmStep.currentNodeId;
+        const isProcessing = algorithmStep.processing.has(n.id);
+        const isFullyVisited = algorithmStep.fullyVisited.has(n.id);
+
+        if (isCurrent) {
+          // State: Currently being processed (dequeued/popped THIS step)
+          return {
+            ...n,
+            className: 'algo-node-current',
+            style: {
+              ...n.style,
+              background: '#f59e0b',
+              border: '3px solid #d97706',
+              boxShadow: '0 0 20px rgba(245, 158, 11, 0.6), 0 0 40px rgba(245, 158, 11, 0.3)',
+              color: '#1e293b',
+              fontWeight: 700,
+              transition: 'all 0.3s ease',
+            },
+          };
+        }
+        if (isFullyVisited) {
+          // State 3: Fully visited / explored
+          return {
+            ...n,
+            className: 'algo-node-visited',
+            style: {
+              ...n.style,
+              background: theme === 'dark' ? '#1e3a2f' : '#d1fae5',
+              border: '2px solid #4ade80',
+              boxShadow: '0 0 8px rgba(74, 222, 128, 0.25)',
+              color: theme === 'dark' ? '#86efac' : '#166534',
+              opacity: 0.85,
+              transition: 'all 0.3s ease',
+            },
+          };
+        }
+        if (isProcessing) {
+          // State 2: In frontier (Queue/Stack)
+          return {
+            ...n,
+            className: 'algo-node-processing',
+            style: {
+              ...n.style,
+              background: theme === 'dark' ? '#1e293b' : '#eff6ff',
+              border: '3px solid #3b82f6',
+              boxShadow: '0 0 16px rgba(59, 130, 246, 0.5), 0 0 32px rgba(59, 130, 246, 0.2)',
+              color: theme === 'dark' ? '#93c5fd' : '#1e40af',
+              fontWeight: 600,
+              transition: 'all 0.3s ease',
+            },
+          };
+        }
+        // Unvisited during algorithm — dim slightly
+        return {
+          ...n,
+          style: {
+            ...n.style,
+            opacity: 0.45,
+            transition: 'all 0.3s ease',
+          },
+        };
       }
-    };
-  });
+
+      // Non-algorithm mode: existing edge-add selection highlight
+      if (n.id === selectedNodeId) {
+        return {
+          ...n,
+          style: {
+            ...n.style,
+            border: '2px solid #10b981',
+            boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)',
+          },
+        };
+      }
+
+      return n;
+    });
+  }, [nodes, algorithmStep, selectedNodeId, theme]);
+
+  const styledEdges = useMemo(() => {
+    if (!algorithmStep || !algorithmStep.activeEdge) return edges;
+
+    return edges.map((e) => {
+      const ae = algorithmStep.activeEdge!;
+      const isActive =
+        (e.source === ae.source && e.target === ae.target) ||
+        (e.source === ae.target && e.target === ae.source);
+
+      if (isActive) {
+        return {
+          ...e,
+          style: {
+            ...e.style,
+            stroke: '#f59e0b',
+            strokeWidth: 4,
+            filter: 'drop-shadow(0 0 6px rgba(245, 158, 11, 0.6))',
+            transition: 'all 0.3s ease',
+          },
+          animated: true,
+        };
+      }
+
+      // Check if both endpoints are visited — dim the edge
+      const srcVisited = algorithmStep.fullyVisited.has(e.source);
+      const tgtVisited = algorithmStep.fullyVisited.has(e.target);
+      if (srcVisited && tgtVisited) {
+        return {
+          ...e,
+          style: {
+            ...e.style,
+            stroke: '#4ade80',
+            strokeWidth: 2,
+            opacity: 0.5,
+            transition: 'all 0.3s ease',
+          },
+        };
+      }
+
+      // Unvisited edge — dim
+      return {
+        ...e,
+        style: {
+          ...e.style,
+          opacity: 0.3,
+          transition: 'all 0.3s ease',
+        },
+      };
+    });
+  }, [edges, algorithmStep]);
 
   return (
     <div className="w-full h-full bg-slate-50 dark:bg-[#0a0f1c] relative">
       <ReactFlow 
         nodes={styledNodes} 
-        edges={edges}
+        edges={styledEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onPaneClick={handlePaneClick}
         onNodeClick={handleNodeClick}
-        nodesDraggable={mode !== 'addEdge'}
+        nodesDraggable={mode !== 'addEdge' && mode !== 'algorithm'}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView

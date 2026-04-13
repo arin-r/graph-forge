@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { InputPanel } from '../components/InputPanel';
 import { GraphCanvas } from '../components/GraphCanvas';
+import { AlgorithmPanel } from '../components/AlgorithmPanel';
 import { parseAdjacencyList, parseAdjacencyMatrix } from '../lib/parsers';
 import { applyCircularLayout } from '../lib/layout';
+import { calculateBFS, calculateDFS } from '../lib/algorithms';
 import { Node, Edge, ReactFlowProvider, useNodesState, useEdgesState } from 'reactflow';
-import { Mode } from '../types/graph';
+import { Mode, AlgorithmStep } from '../types/graph';
 import { computeNextNodeId, handleAddEdge, generateAdjacencyList, generateAdjacencyMatrix } from '../lib/graphUtils';
 import { DEFAULT_LIST_INPUT, DEFAULT_MATRIX_INPUT } from '../lib/constants';
 
@@ -25,9 +27,103 @@ export default function Home() {
   const [nextNodeId, setNextNodeId] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
 
+  // --- Algorithm State ---
+  const [algorithmType, setAlgorithmType] = useState<'bfs' | 'dfs'>('bfs');
+  const [startNodeId, setStartNodeId] = useState<string | null>(null);
+  const [steps, setSteps] = useState<AlgorithmStep[]>([]);
+  const [currentStepIndex, setCurrentStepIndex] = useState(-1);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playSpeed, setPlaySpeed] = useState(800);
+  const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const isAlgorithmActive = currentStepIndex >= 0;
+  const currentStep = isAlgorithmActive && currentStepIndex < steps.length
+    ? steps[currentStepIndex]
+    : null;
+
+  // Auto-select start node when nodes change
+  useEffect(() => {
+    if (nodes.length > 0 && !startNodeId) {
+      const sorted = [...nodes].sort((a, b) => {
+        const numA = parseInt(a.id, 10);
+        const numB = parseInt(b.id, 10);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return a.id.localeCompare(b.id);
+      });
+      setStartNodeId(sorted[0].id);
+    }
+    if (nodes.length === 0) {
+      setStartNodeId(null);
+    }
+  }, [nodes, startNodeId]);
+
+  // --- Algorithm Handlers ---
+  const handleStartAlgorithm = useCallback(() => {
+    if (!startNodeId || nodes.length === 0) return;
+
+    const computedSteps = algorithmType === 'bfs'
+      ? calculateBFS(nodes, edges, startNodeId, directed)
+      : calculateDFS(nodes, edges, startNodeId, directed);
+
+    setSteps(computedSteps);
+    setCurrentStepIndex(0);
+    setMode('algorithm');
+    setSelectedNodeId(null);
+    setIsPlaying(false);
+  }, [algorithmType, startNodeId, nodes, edges, directed]);
+
+  const handleStepForward = useCallback(() => {
+    setCurrentStepIndex((prev) => {
+      if (prev < steps.length - 1) return prev + 1;
+      setIsPlaying(false);
+      return prev;
+    });
+  }, [steps.length]);
+
+  const handleStepBackward = useCallback(() => {
+    setCurrentStepIndex((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  const handlePlayPause = useCallback(() => {
+    setIsPlaying((prev) => !prev);
+  }, []);
+
+  const handleAlgorithmReset = useCallback(() => {
+    setSteps([]);
+    setCurrentStepIndex(-1);
+    setIsPlaying(false);
+    setMode('view');
+  }, []);
+
+  // Auto-play interval
+  useEffect(() => {
+    if (isPlaying && isAlgorithmActive) {
+      playIntervalRef.current = setInterval(() => {
+        setCurrentStepIndex((prev) => {
+          if (prev >= steps.length - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, playSpeed);
+    }
+
+    return () => {
+      if (playIntervalRef.current) {
+        clearInterval(playIntervalRef.current);
+        playIntervalRef.current = null;
+      }
+    };
+  }, [isPlaying, isAlgorithmActive, steps.length, playSpeed]);
+
+  // --- Existing Handlers ---
   const handleRender = useCallback(() => {
     try {
       setError(null);
+      // Reset algorithm state on new render
+      handleAlgorithmReset();
+
       let graph;
       if (format === 'list') {
         graph = parseAdjacencyList(inputText, directed);
@@ -44,7 +140,7 @@ export default function Home() {
     } catch (err: any) {
       setError(err.message || 'Failed to parse graph');
     }
-  }, [inputText, format, directed, setNodes, setEdges]);
+  }, [inputText, format, directed, setNodes, setEdges, handleAlgorithmReset]);
 
   // Initial load effect
   useEffect(() => {
@@ -93,9 +189,12 @@ export default function Home() {
   }, [mounted]);
 
   const handleModeChange = useCallback((newMode: Mode) => {
+    if (newMode !== 'algorithm') {
+      handleAlgorithmReset();
+    }
     setMode(newMode);
     setSelectedNodeId(null);
-  }, []);
+  }, [handleAlgorithmReset]);
 
   const onAddNode = useCallback((position: { x: number; y: number }) => {
     const id = nextNodeId.toString();
@@ -172,20 +271,43 @@ export default function Home() {
           onThemeChange={setTheme}
         />
       </div>
-      <div className="flex-1 relative">
-        <ReactFlowProvider>
-          <GraphCanvas 
-            nodes={nodes} 
-            edges={edges} 
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            mode={mode}
-            selectedNodeId={selectedNodeId}
-            onAddNode={onAddNode}
-            onNodeSelect={onNodeSelect}
-            theme={theme}
+      <div className="flex-1 flex flex-col relative">
+        <div className="flex-1 relative min-h-0">
+          <ReactFlowProvider>
+            <GraphCanvas 
+              nodes={nodes} 
+              edges={edges} 
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              mode={mode}
+              selectedNodeId={selectedNodeId}
+              onAddNode={onAddNode}
+              onNodeSelect={onNodeSelect}
+              theme={theme}
+              algorithmStep={currentStep}
+            />
+          </ReactFlowProvider>
+        </div>
+        <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/95 backdrop-blur-sm">
+          <AlgorithmPanel
+            nodes={nodes}
+            algorithmType={algorithmType}
+            onAlgorithmTypeChange={setAlgorithmType}
+            startNodeId={startNodeId}
+            onStartNodeChange={setStartNodeId}
+            steps={steps}
+            currentStepIndex={currentStepIndex}
+            isPlaying={isPlaying}
+            playSpeed={playSpeed}
+            onStart={handleStartAlgorithm}
+            onStepForward={handleStepForward}
+            onStepBackward={handleStepBackward}
+            onPlayPause={handlePlayPause}
+            onReset={handleAlgorithmReset}
+            onSpeedChange={setPlaySpeed}
+            isActive={isAlgorithmActive}
           />
-        </ReactFlowProvider>
+        </div>
       </div>
     </main>
   );
