@@ -7,7 +7,7 @@ import { parseAdjacencyList, parseAdjacencyMatrix } from '../lib/parsers';
 import { applyCircularLayout } from '../lib/layout';
 import { Node, Edge, ReactFlowProvider, useNodesState, useEdgesState } from 'reactflow';
 import { Mode } from '../types/graph';
-import { computeNextNodeId, handleAddEdge } from '../lib/graphUtils';
+import { computeNextNodeId, handleAddEdge, generateAdjacencyList, generateAdjacencyMatrix } from '../lib/graphUtils';
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -95,6 +95,20 @@ export default function Home() {
     }
   }, [mode, selectedNodeId, edges, directed, setEdges]);
 
+  // Sync graph state to input text box when topology or layout changes
+  useEffect(() => {
+    if (!mounted) return;
+    
+    let newText = '';
+    if (format === 'list') {
+      newText = generateAdjacencyList(nodes, edges, directed);
+    } else {
+      newText = generateAdjacencyMatrix(nodes, edges, directed);
+    }
+    
+    setInputText(prev => prev === newText ? prev : newText);
+  }, [nodes, edges, format, directed, mounted]);
+
   if (!mounted) {
     return <div className="w-screen h-screen bg-slate-50 dark:bg-[#0a0f1c]" />;
   }
@@ -106,14 +120,7 @@ export default function Home() {
           inputText={inputText}
           onInputChange={setInputText}
           format={format}
-          onFormatChange={(fmt) => {
-            setFormat(fmt);
-            if (fmt === 'list') {
-              setInputText('1: 2 3\n2: 3\n3: 1');
-            } else {
-              setInputText('0 1 1\n0 0 1\n1 0 0');
-            }
-          }}
+          onFormatChange={setFormat}
           directed={directed}
           onDirectedChange={setDirected}
           mode={mode}
