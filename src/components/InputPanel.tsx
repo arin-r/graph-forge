@@ -1,4 +1,4 @@
-import { Play, Upload, Sun, Moon } from 'lucide-react';
+import { Play, Upload, Download, Sun, Moon } from 'lucide-react';
 import { useRef } from 'react';
 import { ModeToggle } from './ModeToggle';
 import { Mode } from '../types/graph';
@@ -46,6 +46,18 @@ export function InputPanel({
       if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
     };
     reader.readAsText(file);
+  };
+
+  const handleExportFile = () => {
+    const blob = new Blob([inputText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `graph_${format}_${Date.now()}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -103,13 +115,22 @@ export function InputPanel({
         <div className="flex flex-col gap-2 flex-1 min-h-[250px]">
           <div className="flex items-center justify-between">
             <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Graph Input</label>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-800 px-2 py-1 rounded"
-              title="Import from .txt file"
-            >
-              <Upload size={14} /> Import File
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-800 px-2 py-1 rounded"
+                title="Import from .txt file"
+              >
+                <Upload size={14} /> Import File
+              </button>
+              <button
+                onClick={handleExportFile}
+                className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-800 px-2 py-1 rounded"
+                title="Export to .txt file"
+              >
+                <Download size={14} /> Export File
+              </button>
+            </div>
             <input 
               type="file" 
               accept=".txt" 
