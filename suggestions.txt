@@ -1,0 +1,4 @@
+error handling
+live reflections of interactive Changes
+show last history when switching between list and matrix mode 
+export 
