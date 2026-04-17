@@ -17,8 +17,8 @@ fn main() -> std::io::Result<()> {
     // Generate 5 random graphs
     for i in 1..=5 {
         let n: usize = rng.gen_range(10..=20);
-        // Make the graph sparse by targeting a low average degree (e.g., 2 to 4 outward edges per node)
-        let target_degree: f64 = rng.gen_range(1.5..=4.0);
+        // Make the graph extremely sparse by targeting a very low average degree
+        let target_degree: f64 = rng.gen_range(0.8..=1.5);
         let prob = target_degree / (n as f64);
 
         let mut matrix = vec![vec![0; n]; n];
