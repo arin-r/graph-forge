@@ -43,6 +43,3 @@ next-env.d.ts
 # Rust
 graph-generator/target/
 **/*.rs.bk
-
-# test graphs
-/test_graphs/
