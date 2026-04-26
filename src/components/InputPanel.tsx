@@ -17,6 +17,7 @@ interface InputPanelProps {
   error: string | null;
   theme: 'light' | 'dark';
   onThemeChange: (val: 'light' | 'dark') => void;
+  children?: React.ReactNode;
 }
 
 export function InputPanel({
@@ -31,7 +32,8 @@ export function InputPanel({
   onRender,
   error,
   theme,
-  onThemeChange
+  onThemeChange,
+  children,
 }: InputPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -111,6 +113,8 @@ export function InputPanel({
         </div>
 
         <ModeToggle mode={mode} onModeChange={onModeChange} />
+
+        {children}
 
         <div className="flex flex-col gap-2 flex-1 min-h-[250px]">
           <div className="flex items-center justify-between">

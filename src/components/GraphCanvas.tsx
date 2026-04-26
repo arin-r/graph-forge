@@ -15,6 +15,10 @@ interface GraphCanvasProps {
   onNodeSelect: (nodeId: string | null) => void;
   theme: 'dark' | 'light';
   algorithmStep: AlgorithmStep | null;
+  forceSimActive: boolean;
+  onNodeDragStart: (event: React.MouseEvent, node: Node) => void;
+  onNodeDrag: (event: React.MouseEvent, node: Node) => void;
+  onNodeDragStop: (event: React.MouseEvent, node: Node) => void;
 }
 
 const nodeTypes = {};
@@ -31,6 +35,10 @@ export function GraphCanvas({
   onNodeSelect,
   theme,
   algorithmStep,
+  forceSimActive,
+  onNodeDragStart,
+  onNodeDrag,
+  onNodeDragStop,
 }: GraphCanvasProps) {
   const { project } = useReactFlow();
 
@@ -212,6 +220,9 @@ export function GraphCanvas({
     });
   }, [edges, algorithmStep]);
 
+  // Nodes are draggable in view mode OR when force sim is active
+  const isDraggable = (mode === 'view' || forceSimActive) && mode !== 'addEdge' && mode !== 'algorithm';
+
   return (
     <div className="w-full h-full bg-slate-50 dark:bg-[#0a0f1c] relative">
       <ReactFlow 
@@ -221,7 +232,10 @@ export function GraphCanvas({
         onEdgesChange={onEdgesChange}
         onPaneClick={handlePaneClick}
         onNodeClick={handleNodeClick}
-        nodesDraggable={mode !== 'addEdge' && mode !== 'algorithm'}
+        onNodeDragStart={forceSimActive ? onNodeDragStart : undefined}
+        onNodeDrag={forceSimActive ? onNodeDrag : undefined}
+        onNodeDragStop={forceSimActive ? onNodeDragStop : undefined}
+        nodesDraggable={isDraggable}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView

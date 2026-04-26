@@ -4,9 +4,21 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { InputPanel } from '../components/InputPanel';
 import { GraphCanvas } from '../components/GraphCanvas';
 import { AlgorithmPanel } from '../components/AlgorithmPanel';
+import { ForceLayoutPanel } from '../components/ForceLayoutPanel';
 import { parseAdjacencyList, parseAdjacencyMatrix } from '../lib/parsers';
 import { applyCircularLayout } from '../lib/layout';
 import { calculateBFS, calculateDFS } from '../lib/algorithms';
+import {
+  ForceParams,
+  DEFAULT_FORCE_PARAMS,
+  SimulationState,
+  initSimulation,
+  reheatSimulation,
+  tickSimulation,
+  pinNode,
+  unpinNode,
+  movePinnedNode,
+} from '../lib/forceSimulation';
 import { Node, Edge, ReactFlowProvider, useNodesState, useEdgesState } from 'reactflow';
 import { Mode, AlgorithmStep } from '../types/graph';
 import { computeNextNodeId, handleAddEdge, generateAdjacencyList, generateAdjacencyMatrix } from '../lib/graphUtils';
@@ -41,6 +53,134 @@ export default function Home() {
     ? steps[currentStepIndex]
     : null;
 
+  // --- Force Simulation State ---
+  const [forceParams, setForceParams] = useState<ForceParams>({ ...DEFAULT_FORCE_PARAMS });
+  const [forceSimActive, setForceSimActive] = useState(false);
+  const simStateRef = useRef<SimulationState | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const forceParamsRef = useRef<ForceParams>(forceParams);
+
+  // Keep ref in sync with state (so the rAF loop reads latest params)
+  useEffect(() => {
+    forceParamsRef.current = forceParams;
+  }, [forceParams]);
+
+  // --- Force simulation loop ---
+  const stopSimLoop = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+  }, []);
+
+  const runSimLoop = useCallback(() => {
+    const tick = () => {
+      if (!simStateRef.current) return;
+
+      // Calculate canvas center from current nodes
+      let cx = 400, cy = 300;
+      const phys = simStateRef.current.physics;
+      if (phys.size > 0) {
+        let sx = 0, sy = 0;
+        for (const [, p] of phys) { sx += p.x; sy += p.y; }
+        cx = sx / phys.size;
+        cy = sy / phys.size;
+      }
+
+      simStateRef.current = tickSimulation(
+        simStateRef.current,
+        // Read edges from latest ref — we need a stable ref
+        edgesRef.current,
+        forceParamsRef.current,
+        cx,
+        cy,
+      );
+
+      // Update ReactFlow node positions
+      const sim = simStateRef.current;
+      setNodes((nds) =>
+        nds.map((n) => {
+          const p = sim.physics.get(n.id);
+          if (!p) return n;
+          // Only update if position actually changed (avoid re-render churn)
+          if (Math.abs(n.position.x - p.x) < 0.01 && Math.abs(n.position.y - p.y) < 0.01) return n;
+          return { ...n, position: { x: p.x, y: p.y } };
+        })
+      );
+
+      if (sim.isSettled) {
+        // Simulation converged — stop the loop
+        rafIdRef.current = null;
+        return;
+      }
+
+      rafIdRef.current = requestAnimationFrame(tick);
+    };
+
+    stopSimLoop();
+    rafIdRef.current = requestAnimationFrame(tick);
+  }, [stopSimLoop, setNodes]);
+
+  // Stable ref for edges (so the rAF loop doesn't need edges in its dep array)
+  const edgesRef = useRef<Edge[]>(edges);
+  useEffect(() => { edgesRef.current = edges; }, [edges]);
+
+  // --- Force handlers ---
+  const handleForceStart = useCallback(() => {
+    // Initialize simulation from current node positions
+    simStateRef.current = initSimulation(nodes);
+    setForceSimActive(true);
+    runSimLoop();
+  }, [nodes, runSimLoop]);
+
+  const handleForceStop = useCallback(() => {
+    stopSimLoop();
+    setForceSimActive(false);
+    simStateRef.current = null;
+  }, [stopSimLoop]);
+
+  const handleForceParamsChange = useCallback((newParams: ForceParams) => {
+    setForceParams(newParams);
+    // If simulation is active, re-heat it so it animates to new equilibrium
+    if (simStateRef.current && forceSimActive) {
+      simStateRef.current = reheatSimulation(simStateRef.current);
+      // Ensure the loop is running
+      if (rafIdRef.current === null) {
+        runSimLoop();
+      }
+    }
+  }, [forceSimActive, runSimLoop]);
+
+  // --- Node drag handlers for force simulation ---
+  const handleNodeDragStart = useCallback((_event: React.MouseEvent, node: Node) => {
+    if (!forceSimActive || !simStateRef.current) return;
+    simStateRef.current = pinNode(simStateRef.current, node.id, node.position.x, node.position.y);
+    // Ensure loop is running
+    if (rafIdRef.current === null) {
+      runSimLoop();
+    }
+  }, [forceSimActive, runSimLoop]);
+
+  const handleNodeDrag = useCallback((_event: React.MouseEvent, node: Node) => {
+    if (!forceSimActive || !simStateRef.current) return;
+    simStateRef.current = movePinnedNode(simStateRef.current, node.id, node.position.x, node.position.y);
+  }, [forceSimActive]);
+
+  const handleNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
+    if (!forceSimActive || !simStateRef.current) return;
+    simStateRef.current = unpinNode(simStateRef.current, node.id);
+    // Re-heat so the released node settles back naturally
+    simStateRef.current = reheatSimulation(simStateRef.current);
+    if (rafIdRef.current === null) {
+      runSimLoop();
+    }
+  }, [forceSimActive, runSimLoop]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { stopSimLoop(); };
+  }, [stopSimLoop]);
+
   // Auto-select start node when nodes change
   useEffect(() => {
     if (nodes.length > 0 && !startNodeId) {
@@ -61,6 +201,9 @@ export default function Home() {
   const handleStartAlgorithm = useCallback(() => {
     if (!startNodeId || nodes.length === 0) return;
 
+    // Stop force sim when entering algorithm mode
+    handleForceStop();
+
     const computedSteps = algorithmType === 'bfs'
       ? calculateBFS(nodes, edges, startNodeId, directed)
       : calculateDFS(nodes, edges, startNodeId, directed);
@@ -70,7 +213,7 @@ export default function Home() {
     setMode('algorithm');
     setSelectedNodeId(null);
     setIsPlaying(false);
-  }, [algorithmType, startNodeId, nodes, edges, directed]);
+  }, [algorithmType, startNodeId, nodes, edges, directed, handleForceStop]);
 
   const handleStepForward = useCallback(() => {
     setCurrentStepIndex((prev) => {
@@ -123,6 +266,8 @@ export default function Home() {
       setError(null);
       // Reset algorithm state on new render
       handleAlgorithmReset();
+      // Stop force sim on new render
+      handleForceStop();
 
       let graph;
       if (format === 'list') {
@@ -140,7 +285,7 @@ export default function Home() {
     } catch (err: any) {
       setError(err.message || 'Failed to parse graph');
     }
-  }, [inputText, format, directed, setNodes, setEdges, handleAlgorithmReset]);
+  }, [inputText, format, directed, setNodes, setEdges, handleAlgorithmReset, handleForceStop]);
 
   // Initial load effect
   useEffect(() => {
@@ -267,7 +412,16 @@ export default function Home() {
           error={error}
           theme={theme}
           onThemeChange={setTheme}
-        />
+        >
+          <ForceLayoutPanel
+            params={forceParams}
+            onParamsChange={handleForceParamsChange}
+            isActive={forceSimActive}
+            onStart={handleForceStart}
+            onStop={handleForceStop}
+            disabled={isAlgorithmActive}
+          />
+        </InputPanel>
       </div>
       <div className="flex-1 flex flex-col relative">
         <div className="flex-1 relative min-h-0">
@@ -283,6 +437,10 @@ export default function Home() {
               onNodeSelect={onNodeSelect}
               theme={theme}
               algorithmStep={currentStep}
+              forceSimActive={forceSimActive}
+              onNodeDragStart={handleNodeDragStart}
+              onNodeDrag={handleNodeDrag}
+              onNodeDragStop={handleNodeDragStop}
             />
           </ReactFlowProvider>
         </div>
