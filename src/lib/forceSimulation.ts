@@ -23,6 +23,7 @@ export type NodePhysics = {
 export type SimulationState = {
   physics: Map<string, NodePhysics>;
   isSettled: boolean;
+  temperature: number; // total kinetic energy — 0 = fully settled
 };
 
 const DAMPING = 0.82;
@@ -44,7 +45,7 @@ export function initSimulation(nodes: Node[]): SimulationState {
       pinned: false,
     });
   }
-  return { physics, isSettled: false };
+  return { physics, isSettled: false, temperature: 0 };
 }
 
 /**
@@ -60,7 +61,7 @@ export function reheatSimulation(state: SimulationState): SimulationState {
       vy: p.vy + (Math.random() - 0.5) * 2,
     });
   }
-  return { physics, isSettled: false };
+  return { physics, isSettled: false, temperature: state.temperature };
 }
 
 /**
@@ -149,6 +150,7 @@ export function tickSimulation(
   return {
     physics,
     isSettled: totalKE < SETTLE_THRESHOLD,
+    temperature: totalKE,
   };
 }
 

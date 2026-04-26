@@ -56,6 +56,7 @@ export default function Home() {
   // --- Force Simulation State ---
   const [forceParams, setForceParams] = useState<ForceParams>({ ...DEFAULT_FORCE_PARAMS });
   const [forceSimActive, setForceSimActive] = useState(false);
+  const [forceTemperature, setForceTemperature] = useState(0);
   const simStateRef = useRef<SimulationState | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const forceParamsRef = useRef<ForceParams>(forceParams);
@@ -107,6 +108,9 @@ export default function Home() {
           return { ...n, position: { x: p.x, y: p.y } };
         })
       );
+
+      // Update temperature for the UI
+      setForceTemperature(sim.temperature);
 
       if (sim.isSettled) {
         // Simulation converged — stop the loop
@@ -420,6 +424,7 @@ export default function Home() {
             onStart={handleForceStart}
             onStop={handleForceStop}
             disabled={isAlgorithmActive}
+            temperature={forceTemperature}
           />
         </InputPanel>
       </div>

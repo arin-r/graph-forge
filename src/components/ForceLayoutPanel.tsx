@@ -11,6 +11,7 @@ interface ForceLayoutPanelProps {
   onStart: () => void;
   onStop: () => void;
   disabled: boolean; // true when algorithm mode is active
+  temperature: number; // current system kinetic energy
 }
 
 export function ForceLayoutPanel({
@@ -20,6 +21,7 @@ export function ForceLayoutPanel({
   onStart,
   onStop,
   disabled,
+  temperature,
 }: ForceLayoutPanelProps) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -148,6 +150,33 @@ export function ForceLayoutPanel({
             <div className="force-status">
               <span className="force-status-dot" />
               Simulation running
+            </div>
+          )}
+
+          {/* System Temperature Indicator */}
+          {isActive && (
+            <div className="force-temp-group">
+              <div className="force-temp-header">
+                <span className="force-slider-label">System Temperature</span>
+                <span className={`force-temp-badge ${
+                  temperature < 0.5 ? 'force-temp-cool' :
+                  temperature < 5 ? 'force-temp-warm' :
+                  temperature < 30 ? 'force-temp-hot' : 'force-temp-blazing'
+                }`}>
+                  {temperature < 0.5 ? 'Stable' :
+                   temperature < 5 ? 'Settling' :
+                   temperature < 30 ? 'Active' : 'Turbulent'}
+                </span>
+              </div>
+              <div className="force-temp-track">
+                <div
+                  className="force-temp-fill"
+                  style={{ width: `${Math.min(100, (Math.log(temperature + 1) / Math.log(100)) * 100)}%` }}
+                />
+              </div>
+              <div className="force-temp-value">
+                KE: {temperature.toFixed(2)}
+              </div>
             </div>
           )}
         </div>

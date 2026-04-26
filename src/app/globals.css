@@ -768,3 +768,88 @@ body {
     box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
   }
 }
+
+/* System Temperature Indicator */
+.force-temp-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem;
+  background: rgba(100, 116, 139, 0.06);
+  border-radius: 8px;
+  border: 1px solid rgba(100, 116, 139, 0.1);
+}
+
+.dark .force-temp-group {
+  background: rgba(100, 116, 139, 0.08);
+  border-color: rgba(100, 116, 139, 0.15);
+}
+
+.force-temp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.force-temp-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.force-temp-cool {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.force-temp-warm {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.force-temp-hot {
+  color: #f97316;
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.force-temp-blazing {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  animation: force-temp-blink 0.8s ease-in-out infinite;
+}
+
+@keyframes force-temp-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+.force-temp-track {
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.dark .force-temp-track {
+  background: #334155;
+}
+
+.force-temp-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+  transition: width 0.15s ease-out;
+}
+
+.force-temp-value {
+  font-size: 0.6rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: #94a3b8;
+  text-align: right;
+}
+
