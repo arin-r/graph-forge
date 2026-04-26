@@ -449,3 +449,37 @@ body {
 .algo-node-current {
   animation: algo-pulse-amber 1s ease-in-out infinite;
 }
+
+/* ===== Floating Edges ===== */
+
+/* Hide default handles — edges compute their own boundary points */
+.react-flow__handle {
+  opacity: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Edge label styling */
+.floating-edge-label-bg {
+  fill: #f8fafc;
+  stroke: #e2e8f0;
+  stroke-width: 1;
+}
+
+.dark .floating-edge-label-bg {
+  fill: #1e293b;
+  stroke: #334155;
+}
+
+.floating-edge-label-text {
+  font-size: 11px;
+  font-weight: 500;
+  fill: #475569;
+}
+
+.dark .floating-edge-label-text {
+  fill: #94a3b8;
+}

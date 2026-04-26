@@ -2,3 +2,7 @@ error handling
 live reflections of interactive Changes
 show last history when switching between list and matrix mode 
 export 
+
+
+show the bfs tree with edges highlighted
+in tree form with export option

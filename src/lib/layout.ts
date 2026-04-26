@@ -16,8 +16,6 @@ export function applyCircularLayout(graph: Graph, centerX = 400, centerY = 300) 
       position: { x, y },
       data: { label: node.id },
       type: 'default',
-      sourcePosition: 'bottom',
-      targetPosition: 'top',
       style: { 
         width: 48, 
         height: 48, 
@@ -34,9 +32,9 @@ export function applyCircularLayout(graph: Graph, centerX = 400, centerY = 300) 
     source: edge.source,
     target: edge.target,
     label: edge.weight !== undefined ? String(edge.weight) : undefined,
-    type: 'default',
+    type: 'floating',
     style: { strokeWidth: 2 },
-    markerEnd: graph.directed ? { type: 'arrowclosed' as any, width: 20, height: 20 } : undefined
+    markerEnd: graph.directed ? { type: 'arrowclosed' as any, width: 14, height: 14 } : undefined
   }));
 
   return { nodes: reactFlowNodes, edges: reactFlowEdges };

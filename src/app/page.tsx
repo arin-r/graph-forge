@@ -203,8 +203,6 @@ export default function Home() {
       position,
       data: { label: id },
       type: 'default',
-      sourcePosition: 'bottom' as any,
-      targetPosition: 'top' as any,
       style: { 
         width: 48, 
         height: 48, 

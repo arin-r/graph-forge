@@ -2,6 +2,7 @@ import { ReactFlow, Controls, Background, Node, Edge, useReactFlow } from 'react
 import 'reactflow/dist/style.css';
 import { Mode, AlgorithmStep } from '../types/graph';
 import { useCallback, useMemo } from 'react';
+import { FloatingEdge } from './FloatingEdge';
 
 interface GraphCanvasProps {
   nodes: Node[];
@@ -17,7 +18,7 @@ interface GraphCanvasProps {
 }
 
 const nodeTypes = {};
-const edgeTypes = {};
+const edgeTypes = { floating: FloatingEdge };
 
 export function GraphCanvas({ 
   nodes, 
