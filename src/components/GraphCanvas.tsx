@@ -137,13 +137,25 @@ export function GraphCanvas({
   }, [nodes, algorithmStep, selectedNodeId, theme]);
 
   const styledEdges = useMemo(() => {
-    if (!algorithmStep || !algorithmStep.activeEdge) return edges;
+    if (!algorithmStep) return edges;
+
+    // Build a set of tree edge keys for fast lookup
+    const treeEdgeSet = new Set<string>();
+    for (const te of algorithmStep.treeEdges) {
+      treeEdgeSet.add(`${te.source}->${te.target}`);
+      treeEdgeSet.add(`${te.target}->${te.source}`); // undirected matching
+    }
 
     return edges.map((e) => {
-      const ae = algorithmStep.activeEdge!;
-      const isActive =
+      // Check if this is the currently active (being-traversed) edge
+      const ae = algorithmStep.activeEdge;
+      const isActive = ae != null && (
         (e.source === ae.source && e.target === ae.target) ||
-        (e.source === ae.target && e.target === ae.source);
+        (e.source === ae.target && e.target === ae.source)
+      );
+
+      // Check if this edge is part of the BFS/DFS tree
+      const isTreeEdge = treeEdgeSet.has(`${e.source}->${e.target}`);
 
       if (isActive) {
         return {
@@ -159,7 +171,22 @@ export function GraphCanvas({
         };
       }
 
-      // Check if both endpoints are visited — dim the edge
+      if (isTreeEdge) {
+        // Tree edge — prominent teal/cyan highlight
+        return {
+          ...e,
+          style: {
+            ...e.style,
+            stroke: '#2dd4bf',
+            strokeWidth: 3,
+            filter: 'drop-shadow(0 0 4px rgba(45, 212, 191, 0.5))',
+            opacity: 1,
+            transition: 'all 0.3s ease',
+          },
+        };
+      }
+
+      // Non-tree edge between visited nodes — dim
       const srcVisited = algorithmStep.fullyVisited.has(e.source);
       const tgtVisited = algorithmStep.fullyVisited.has(e.target);
       if (srcVisited && tgtVisited) {
@@ -167,9 +194,7 @@ export function GraphCanvas({
           ...e,
           style: {
             ...e.style,
-            stroke: '#4ade80',
-            strokeWidth: 2,
-            opacity: 0.5,
+            opacity: 0.2,
             transition: 'all 0.3s ease',
           },
         };
@@ -180,7 +205,7 @@ export function GraphCanvas({
         ...e,
         style: {
           ...e.style,
-          opacity: 0.3,
+          opacity: 0.15,
           transition: 'all 0.3s ease',
         },
       };

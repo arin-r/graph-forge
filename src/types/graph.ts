@@ -39,6 +39,8 @@ export type AlgorithmStep = {
   fullyVisited: Set<string>;
   /** The edge currently being traversed, or null */
   activeEdge: { source: string; target: string } | null;
+  /** Edges that form the BFS/DFS tree (cumulative) */
+  treeEdges: { source: string; target: string }[];
   /** Ordered list of fully-visited node IDs so far */
   traversalOrder: string[];
   /** Human-readable explanation of this step */

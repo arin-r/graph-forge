@@ -46,6 +46,7 @@ function snapshot(
   processing: Set<string>,
   fullyVisited: Set<string>,
   activeEdge: { source: string; target: string } | null,
+  treeEdges: { source: string; target: string }[],
   traversalOrder: string[],
   description: string
 ): AlgorithmStep {
@@ -55,6 +56,7 @@ function snapshot(
     processing: new Set(processing),
     fullyVisited: new Set(fullyVisited),
     activeEdge: activeEdge ? { ...activeEdge } : null,
+    treeEdges: treeEdges.map(e => ({ ...e })),
     traversalOrder: [...traversalOrder],
     description,
   };
@@ -79,6 +81,7 @@ export function calculateBFS(
   const processing = new Set<string>();
   const fullyVisited = new Set<string>();
   const traversalOrder: string[] = [];
+  const treeEdges: { source: string; target: string }[] = [];
   const queue: string[] = [];
 
   // Step 0: Initial state — push start node into queue
@@ -91,6 +94,7 @@ export function calculateBFS(
       processing,
       fullyVisited,
       null,
+      treeEdges,
       traversalOrder,
       `Initialize: enqueue start node ${startNodeId}`
     )
@@ -110,6 +114,7 @@ export function calculateBFS(
         processing,
         fullyVisited,
         null,
+        treeEdges,
         traversalOrder,
         `Dequeue node ${current} → mark as fully visited`
       )
@@ -121,6 +126,7 @@ export function calculateBFS(
       if (!processing.has(neighbor) && !fullyVisited.has(neighbor)) {
         processing.add(neighbor);
         queue.push(neighbor);
+        treeEdges.push({ source: current, target: neighbor });
 
         steps.push(
           snapshot(
@@ -129,6 +135,7 @@ export function calculateBFS(
             processing,
             fullyVisited,
             { source: current, target: neighbor },
+            treeEdges,
             traversalOrder,
             `Discover neighbor ${neighbor} via edge ${current} → ${neighbor}, enqueue`
           )
@@ -145,6 +152,7 @@ export function calculateBFS(
       processing,
       fullyVisited,
       null,
+      treeEdges,
       traversalOrder,
       `BFS complete. Traversal order: ${traversalOrder.join(' → ')}`
     )
@@ -176,11 +184,15 @@ export function calculateDFS(
   const processing = new Set<string>();
   const fullyVisited = new Set<string>();
   const traversalOrder: string[] = [];
+  const treeEdges: { source: string; target: string }[] = [];
   const stack: string[] = [];
+  // Track who pushed each node onto the stack (for tree edge recording)
+  const parent = new Map<string, string | null>();
 
   // Step 0: Push start node onto stack
   stack.push(startNodeId);
   processing.add(startNodeId);
+  parent.set(startNodeId, null);
   steps.push(
     snapshot(
       null,
@@ -188,6 +200,7 @@ export function calculateDFS(
       processing,
       fullyVisited,
       null,
+      treeEdges,
       traversalOrder,
       `Initialize: push start node ${startNodeId} onto stack`
     )
@@ -206,6 +219,12 @@ export function calculateDFS(
     fullyVisited.add(current);
     traversalOrder.push(current);
 
+    // Record tree edge if this node was discovered via a parent
+    const par = parent.get(current);
+    if (par != null) {
+      treeEdges.push({ source: par, target: current });
+    }
+
     steps.push(
       snapshot(
         current,
@@ -213,6 +232,7 @@ export function calculateDFS(
         processing,
         fullyVisited,
         null,
+        treeEdges,
         traversalOrder,
         `Pop node ${current} → mark as fully visited`
       )
@@ -223,9 +243,10 @@ export function calculateDFS(
     const reversedNeighbors = [...neighbors].reverse();
     for (const neighbor of reversedNeighbors) {
       if (!fullyVisited.has(neighbor)) {
-        // Remove old entry from processing tracking if re-pushed
         stack.push(neighbor);
         processing.add(neighbor);
+        // Update parent — last push wins (this is the edge DFS will use)
+        parent.set(neighbor, current);
 
         steps.push(
           snapshot(
@@ -234,6 +255,7 @@ export function calculateDFS(
             processing,
             fullyVisited,
             { source: current, target: neighbor },
+            treeEdges,
             traversalOrder,
             `Discover neighbor ${neighbor} via edge ${current} → ${neighbor}, push onto stack`
           )
@@ -250,6 +272,7 @@ export function calculateDFS(
       processing,
       fullyVisited,
       null,
+      treeEdges,
       traversalOrder,
       `DFS complete. Traversal order: ${traversalOrder.join(' → ')}`
     )
